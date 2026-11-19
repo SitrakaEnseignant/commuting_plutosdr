@@ -26,6 +26,22 @@ with open("ngspice.log") as f:
         if m:
             mesures[m.group(1)] = float(m.group(2))
 
+_trapz = getattr(np, "trapezoid", None) or np.trapz
+
+
+def moyenne(vec, t0, t1):
+    """Moyenne temporelle d'une courbe entre t0 et t1 (secondes)."""
+    t = col["time"]
+    m = (t >= t0) & (t <= t1)
+    return float(_trapz(col[vec][m], t[m]) / (t[m][-1] - t[m][0]))
+
+
+mesures["vpluto_on_nom"] = moyenne("vpluto_nom", 8e-3, 11e-3)
+mesures["vpluto_off_nom"] = moyenne("vpluto_nom", 15e-3, 19e-3)
+mesures["vpluto_on_worst"] = moyenne("vpluto_worst", 8e-3, 11e-3)
+mesures["vpluto_off_worst"] = moyenne("vpluto_worst", 15e-3, 19e-3)
+
+
 def get(name):
     return mesures.get(name, float("nan"))
 

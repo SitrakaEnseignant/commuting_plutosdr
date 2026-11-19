@@ -49,15 +49,12 @@ Cplutow vinw gndoutw 47u
 .tran 1u 20m
 
 * ---------- Mesures ----------
-.meas TRAN vpluto_on_nom    AVG V(vin,gndout)   FROM=8m  TO=11m
-.meas TRAN vpluto_off_nom   AVG V(vin,gndout)   FROM=15m TO=19m
+* (tensions au Pluto calculees par plot_results.py a partir des courbes)
 .meas TRAN vgrille_on_nom   AVG V(coll)         FROM=8m  TO=11m
 .meas TRAN vgrille_off_nom  AVG V(coll)         FROM=15m TO=19m
 .meas TRAN vds_on_nom       AVG V(gndout)       FROM=8m  TO=11m
 .meas TRAN ipluto_on_nom    AVG I(VIN)          FROM=8m  TO=11m
 .meas TRAN ipic_nom         MIN I(VIN)          FROM=2m  TO=4m
-.meas TRAN vpluto_on_worst  AVG V(vinw,gndoutw) FROM=8m  TO=11m
-.meas TRAN vpluto_off_worst AVG V(vinw,gndoutw) FROM=15m TO=19m
 .meas TRAN vgrille_on_worst AVG V(collw)        FROM=8m  TO=11m
 .meas TRAN vds_on_worst     AVG V(gndoutw)      FROM=8m  TO=11m
 
