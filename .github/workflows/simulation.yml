@@ -1,0 +1,54 @@
+name: Simulation ngspice
+
+on:
+  push:
+    paths:
+      - "sim/**"
+      - ".github/workflows/simulation.yml"
+  pull_request:
+    paths:
+      - "sim/**"
+  workflow_dispatch:
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sim
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer ngspice et Python
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ngspice python3-matplotlib python3-numpy
+          ngspice -v | head -3
+
+      - name: Simuler le montage (ngspice)
+        run: |
+          ngspice -b pluto_commutation.cir -o ngspice.log || true
+          cat ngspice.log
+          test -s resultats.txt
+
+      - name: Tracer les courbes et verifier le fonctionnement
+        run: |
+          set -o pipefail
+          python3 plot_results.py
+        continue-on-error: false
+
+      - name: Publier le resume
+        if: always()
+        run: |
+          if [ -f resultats.md ]; then cat resultats.md >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Publier les resultats
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultats-simulation
+          path: |
+            sim/resultats.png
+            sim/resultats.md
+            sim/resultats.txt
+            sim/ngspice.log

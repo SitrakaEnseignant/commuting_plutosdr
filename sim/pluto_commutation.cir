@@ -1,0 +1,75 @@
+* Commutation de l'alimentation du PlutoSDR : 2N2222 + IRLZ44N (coupure cote masse)
+* Simulation ngspice (lancee par la GitHub Action .github/workflows/simulation.yml)
+*
+* Logique : SIG = 0 V -> Pluto ALLUME ; SIG = 3,3 V -> Pluto ETEINT
+* Scenario : SIG a 3,3 V (Pluto eteint), passe a 0 V a 2 ms (allumage),
+*            remonte a 3,3 V a 12 ms (extinction). Duree : 20 ms.
+*
+* Deux montages identiques sont simules en parallele :
+*   - "nominal"   : IRLZ44N typique (seuil 1,5 V)
+*   - "pire cas"  : IRLZ44N au seuil maximal de la datasheet (2,0 V), canal plus faible
+
+* ---------- Signal GPIO (ESP8266 / Raspberry Pi, 3,3 V) ----------
+VSIG  sig   0     PULSE(3.3 0 2m 1u 1u 10m 40m)
+
+* ================= Montage nominal =================
+VIN   in5   0     DC 5.0
+Rcab  in5   vin   0.1
+R1    sig   base  47k
+Q1    coll  base  0      Q2N2222
+R2    vin   coll  10k
+M1    gndout coll 0      IRLZ44N_TYP
+Rpluto vin  gndout 5
+Cpluto vin  gndout 47u
+
+* ================= Montage pire cas =================
+VINW  in5w  0     DC 5.0
+Rcabw in5w  vinw  0.1
+R1w   sig   basew 47k
+Q1w   collw basew 0      Q2N2222
+R2w   vinw  collw 10k
+M1w   gndoutw collw 0    IRLZ44N_WORST
+Rplutow vinw gndoutw 5
+Cplutow vinw gndoutw 47u
+
+* ---------- Modeles ----------
+* 2N2222 : modele standard (bibliotheque LTspice, NXP)
+.model Q2N2222 NPN(IS=1E-14 VAF=100 BF=200 IKF=0.3 XTB=1.5 BR=3 CJC=8E-12 CJE=25E-12
++ TR=100E-9 TF=400E-12 ITF=1 VTF=2 XTF=3 RB=10 RC=.3 RE=.2)
+*
+* IRLZ44N : modeles VDMOS approches, cales sur la datasheet Infineon
+* (VGS(th) 1,0-2,0 V ; RDS(on) <= 25 mOhm a 5 V ; <= 35 mOhm a 4 V).
+* Pour un resultat exact : modele officiel Infineon (page produit > Simulation models).
+.model IRLZ44N_TYP   VDMOS(Vto=1.5 Kp=40 Rd=8m Rs=6m Rg=2 Cgdmax=1.2n Cgdmin=0.15n
++ Cgs=1.5n Cjo=0.5n Is=1e-12 Rb=8m)
+.model IRLZ44N_WORST VDMOS(Vto=2.0 Kp=20 Rd=10m Rs=8m Rg=2 Cgdmax=1.2n Cgdmin=0.15n
++ Cgs=1.5n Cjo=0.5n Is=1e-12 Rb=8m)
+
+* ---------- Analyse ----------
+.tran 1u 20m
+
+* ---------- Mesures ----------
+.meas TRAN vpluto_on_nom    AVG V(vin,gndout)   FROM=8m  TO=11m
+.meas TRAN vpluto_off_nom   AVG V(vin,gndout)   FROM=15m TO=19m
+.meas TRAN vgrille_on_nom   AVG V(coll)         FROM=8m  TO=11m
+.meas TRAN vgrille_off_nom  AVG V(coll)         FROM=15m TO=19m
+.meas TRAN vds_on_nom       AVG V(gndout)       FROM=8m  TO=11m
+.meas TRAN ipluto_on_nom    AVG I(VIN)          FROM=8m  TO=11m
+.meas TRAN ipic_nom         MIN I(VIN)          FROM=2m  TO=4m
+.meas TRAN vpluto_on_worst  AVG V(vinw,gndoutw) FROM=8m  TO=11m
+.meas TRAN vpluto_off_worst AVG V(vinw,gndoutw) FROM=15m TO=19m
+.meas TRAN vgrille_on_worst AVG V(collw)        FROM=8m  TO=11m
+.meas TRAN vds_on_worst     AVG V(gndoutw)      FROM=8m  TO=11m
+
+.control
+set wr_singlescale
+set wr_vecnames
+run
+let vpluto_nom = v(vin) - v(gndout)
+let vpluto_worst = v(vinw) - v(gndoutw)
+let ipluto_nom = -i(VIN)
+wrdata resultats.txt v(sig) v(coll) vpluto_nom v(gndout) ipluto_nom v(collw) vpluto_worst v(gndoutw)
+quit
+.endc
+
+.end
